@@ -26,6 +26,7 @@ public class DefaultDriveCommand extends CommandBase {
     // Called when the command is initially scheduled.
     @Override
     public void initialize() {
+        System.out.println("DefaultDriveCommand started.");
     }
 
     // Called every time the scheduler runs while the command is scheduled.
@@ -89,10 +90,10 @@ public class DefaultDriveCommand extends CommandBase {
     @Override
     public void end(boolean interrupted) {
         if (interrupted) {
-            System.out.println("DefaultDriveCommand interrupted");
+            System.out.println("DefaultDriveCommand interrupted.");
         }
         else {
-            System.out.println("DefaultDriveCommand ended");
+            System.out.println("DefaultDriveCommand ended.");
         }
     }
 
