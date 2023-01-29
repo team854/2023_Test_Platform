@@ -1,25 +1,23 @@
 package frc.robot.commands.drive;
 
-import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.CommandBase;
+import frc.robot.GameController;
 import frc.robot.subsystems.DriveSubsystem;
 
 public class DefaultDriveCommand extends CommandBase {
 
     private final DriveSubsystem driveSubsystem;
-    private final XboxController driverController;
-
-    private final double         DRIVE_FILTER_VALUE = 0.075f;
+    private final GameController gameController;
 
     /**
      * Creates a new ExampleCommand.
      *
      * @param driveSubsystem The subsystem used by this command.
      */
-    public DefaultDriveCommand(XboxController driverController, DriveSubsystem driveSubsystem) {
+    public DefaultDriveCommand(GameController gameController, DriveSubsystem driveSubsystem) {
 
-        this.driverController = driverController;
-        this.driveSubsystem   = driveSubsystem;
+        this.gameController = gameController;
+        this.driveSubsystem = driveSubsystem;
 
         // Use addRequirements() here to declare subsystem dependencies.
         addRequirements(driveSubsystem);
@@ -34,24 +32,46 @@ public class DefaultDriveCommand extends CommandBase {
     @Override
     public void execute() {
 
-        // Filter out low input values to reduce drivetrain drift
-        double  leftY      = (Math.abs(driverController.getLeftY()) < DRIVE_FILTER_VALUE) ? 0.0f : driverController.getLeftY();
-        double  leftX      = (Math.abs(driverController.getLeftX()) < DRIVE_FILTER_VALUE) ? 0.0f : driverController.getLeftX();
+        // Use arcade drive
+        // Left Y controls velocity and forward/back
+        // Right X controls turning
+
+        double speed      = gameController.getLeftY();
+        double turn       = gameController.getRightX() * 3.0d / 4.0d; // Turn at a max 3/4 speed.
 
         // Use Arcade drive where the left Y axis is the speed, and the right X axis is the turn
         // NOTE: the Y axis value coming from the controller is inverted - stick forward gives a
         // negative Y
-        double  leftSpeed  = leftY * -1 + leftX;
-        double  rightSpeed = leftY * -1 - leftX;
+        double leftSpeed  = speed + turn;
+        double rightSpeed = speed - turn;
 
-        // Drive slowly unless the right bumper is pressed for speed boost.
-        // This is useful for training drivers at low speeds and would
-        // likely be removed for competitions
-        boolean boost      = false;
-
-        if (driverController.getRightBumper()) {
-            boost = true;
+        // If the magnitude of the speed + turn > 1.0, then the driver will lose some ability
+        // to turn the robot. Maintain the ratio / differential of the turn amount when the
+        // motor speeds exceed 1.
+        if (leftSpeed > 1 || rightSpeed > 1) {
+            if (leftSpeed > 1) {
+                leftSpeed  = 1;
+                rightSpeed = 1 - turn * 2;
+            }
+            else {
+                leftSpeed  = 1 + turn * 2;
+                rightSpeed = 1;
+            }
         }
+        else if (rightSpeed < -1 || leftSpeed < -1) {
+            if (leftSpeed < -1) {
+                leftSpeed  = -1;
+                rightSpeed = -1 - turn * 2;
+            }
+            else {
+                leftSpeed  = -1 + turn * 2;
+                rightSpeed = -1;
+            }
+        }
+
+        // Drive slowly unless one of the bumpers is pressed, then boost the speed to full.
+        // This code should likely be removed at competition
+        boolean boost = gameController.getRightBumper() || gameController.getLeftBumper();
 
         if (!boost) {
             // Drive at half speed unless there is a boost
@@ -62,14 +82,21 @@ public class DefaultDriveCommand extends CommandBase {
         }
     }
 
-    // Called once the command ends or is interrupted.
-    @Override
-    public void end(boolean interrupted) {
-    }
-
     // Returns true when the command should end.
     @Override
     public boolean isFinished() {
         return false;
     }
+
+    // Called once the command ends or is interrupted.
+    @Override
+    public void end(boolean interrupted) {
+        if (interrupted) {
+            System.out.println("DefaultDriveCommand interrupted");
+        }
+        else {
+            System.out.println("DefaultDriveCommand ended");
+        }
+    }
+
 }

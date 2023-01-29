@@ -31,7 +31,7 @@ public class RobotContainer {
     SendableChooser<String>      autoChooser      = new SendableChooser<>();
 
     // The driver's controller - is the Logitech controller mapped the same as XBox?
-    private final XboxController driverController = new XboxController(OiConstants.DRIVER_CONTROLLER_PORT);
+    private final GameController driverController = new GameController(OiConstants.DRIVER_CONTROLLER_PORT);
 
     /**
      * The container for the robot. Contains subsystems, OI devices, and commands.
