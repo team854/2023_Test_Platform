@@ -39,9 +39,6 @@ public class DefaultDriveCommand extends CommandBase {
         double speed      = gameController.getLeftY();
         double turn       = gameController.getRightX() * 3.0d / 4.0d; // Turn at a max 3/4 speed.
 
-        // Use Arcade drive where the left Y axis is the speed, and the right X axis is the turn
-        // NOTE: the Y axis value coming from the controller is inverted - stick forward gives a
-        // negative Y
         double leftSpeed  = speed + turn;
         double rightSpeed = speed - turn;
 
