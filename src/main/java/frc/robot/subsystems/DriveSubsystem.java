@@ -3,8 +3,8 @@ package frc.robot.subsystems;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
-import com.kauailabs.navx.frc.AHRS;
 
+import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.DriveConstants;
@@ -26,7 +26,7 @@ public class DriveSubsystem extends SubsystemBase {
     private double         leftSpeed          = 0;
     private double         rightSpeed         = 0;
 
-    private AHRS           navXGyro           = null;
+    private ADIS16470_IMU  imu                = new ADIS16470_IMU();
 
     private double         gyroHeadingOffset  = 0;
 
@@ -59,10 +59,6 @@ public class DriveSubsystem extends SubsystemBase {
 
         // Setting both encoders to 0
         resetEncoders();
-
-        // Declaring a NavX gyro will start the automatic calibration.
-        // Do not move the robot when powering on.
-        navXGyro = new AHRS();
     }
 
     /**
@@ -74,7 +70,7 @@ public class DriveSubsystem extends SubsystemBase {
     public void calibrateGyro() {
 
         gyroHeadingOffset = 0;
-        navXGyro.calibrate();
+        imu.calibrate();
     }
 
     /**
@@ -129,11 +125,11 @@ public class DriveSubsystem extends SubsystemBase {
 
         switch (gyroAxis) {
         case YAW:
-            return navXGyro.getAngle();
+            return imu.getAngle();
         case PITCH:
-            return navXGyro.getPitch();
+            return imu.getYComplementaryAngle();
         case ROLL:
-            return navXGyro.getRoll();
+            return imu.getXComplementaryAngle();
         default:
             return 0;
         }
@@ -221,9 +217,10 @@ public class DriveSubsystem extends SubsystemBase {
 
         SmartDashboard.putNumber("Distance (inches)", getEncoderDistanceInches());
 
-        SmartDashboard.putData("Gyro", navXGyro);
+        SmartDashboard.putData("Gyro", imu);
 
         SmartDashboard.putNumber("Gyro Heading", getHeading());
         SmartDashboard.putNumber("Gyro Pitch", getPitch());
+        SmartDashboard.putNumber("Gyro Roll", getRawGyroAngle(GyroAxis.ROLL));
     }
 }
