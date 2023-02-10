@@ -3,8 +3,8 @@ package frc.robot.subsystems;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.kauailabs.navx.frc.AHRS;
 
-import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.DriveConstants;
@@ -19,14 +19,12 @@ public class DriveSubsystem extends SubsystemBase {
     private final TalonSRX rightPrimaryMotor  = new TalonSRX(DriveConstants.RIGHT_MOTOR_PORT);
     private final TalonSRX rightFollowerMotor = new TalonSRX(DriveConstants.RIGHT_MOTOR_PORT + 1);
 
-    // FIXME: Are there encoders
-    // leftEncoder, rightEncoder?
-    // If there is a NavX we could try to pull the distance estimate off the NavX
-
     private double         leftSpeed          = 0;
     private double         rightSpeed         = 0;
 
-    private ADIS16470_IMU  imu                = new ADIS16470_IMU();
+    private AHRS           navX               = new AHRS();
+    private double         offsetX            = 0;
+    private double         offsetY            = 0;
 
     private double         gyroHeadingOffset  = 0;
 
@@ -56,9 +54,6 @@ public class DriveSubsystem extends SubsystemBase {
         rightFollowerMotor.setNeutralMode(NeutralMode.Brake);
 
         rightFollowerMotor.follow(rightPrimaryMotor);
-
-        // Setting both encoders to 0
-        resetEncoders();
     }
 
     /**
@@ -70,7 +65,7 @@ public class DriveSubsystem extends SubsystemBase {
     public void calibrateGyro() {
 
         gyroHeadingOffset = 0;
-        imu.calibrate();
+        navX.calibrate();
     }
 
     /**
@@ -123,13 +118,15 @@ public class DriveSubsystem extends SubsystemBase {
 
     private double getRawGyroAngle(GyroAxis gyroAxis) {
 
+        // NOTE: Pitch and roll may be reversed depending on the orientation
+        // of the NavX in the robot.
         switch (gyroAxis) {
         case YAW:
-            return imu.getAngle();
+            return navX.getAngle();
         case PITCH:
-            return imu.getYComplementaryAngle();
+            return navX.getPitch();
         case ROLL:
-            return imu.getXComplementaryAngle();
+            return navX.getRoll();
         default:
             return 0;
         }
@@ -139,52 +136,30 @@ public class DriveSubsystem extends SubsystemBase {
         return getRawGyroAngle(GyroAxis.PITCH);
     }
 
-    /**
-     * Gets the average distance of the two encoders.
-     *
-     * @return the average of the two encoder readings
-     */
-    public double getAverageEncoderCounts() {
-        return (getLeftEncoder() + getRightEncoder()) / 2;
+    public double getRoll() {
+        return getRawGyroAngle(GyroAxis.ROLL);
     }
 
-    public double getEncoderDistanceInches() {
+    public double getDistanceCm() {
 
-        // Note: the NavX can do a distance estimate if encoders are not available
+        // Use the NavX to get the distance of the robot travel in cm
+        // NOTE: the NavX returns displacement in cm, so multiply the meters by 100.
 
-        return getAverageEncoderCounts() * DriveConstants.INCHES_PER_ENCODER_COUNT;
-    }
+        double x = (navX.getDisplacementX() - offsetX) * 100d;
+        double y = (navX.getDisplacementY() - offsetY) * 100d;
 
-    /**
-     * Gets the left drive encoder.
-     *
-     * @return the left drive encoder
-     */
-    public double getLeftEncoder() {
-
-        // FIXME: Are there encoders?
-        return 0; // leftEncoder.getPosition();
-    }
-
-    /**
-     * Gets the right drive encoder.
-     *
-     * @return the right drive encoder
-     */
-    public double getRightEncoder() {
-
-        // FIXME: Are there encoders? What are they?
-        return 0; // rightEncoder.getPosition();
+        // distance travelled is the hypotenuse of x, y
+        return Math.round(Math.sqrt(x * x + y * y));
     }
 
     /** Resets the drive encoders to currently read a position of 0. */
     public void resetEncoders() {
-        // rightEncoder.setPosition(0);
-        // leftEncoder.setPosition(0);
 
-        // FIXME: If using a NavX, pull the distance estimate off the NavX gyro.
-        // For the reset routine, just store the current NavX value and
-        // then return the delta from that value on all subsequent reads
+        // NOTE: For the NavX, capture the current reading and use that
+        // to offset any future readings.
+
+        offsetX = navX.getDisplacementX();
+        offsetY = navX.getDisplacementY();
     }
 
 
@@ -212,15 +187,12 @@ public class DriveSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Right Motor", rightSpeed);
         SmartDashboard.putNumber("Left  Motor", leftSpeed);
 
-        SmartDashboard.putNumber("Right Encoder", getRightEncoder());
-        SmartDashboard.putNumber("Left Encoder", getLeftEncoder());
+        SmartDashboard.putNumber("Distance (cm)", getDistanceCm());
 
-        SmartDashboard.putNumber("Distance (inches)", getEncoderDistanceInches());
-
-        SmartDashboard.putData("Gyro", imu);
+        SmartDashboard.putData("Gyro", navX);
 
         SmartDashboard.putNumber("Gyro Heading", getHeading());
         SmartDashboard.putNumber("Gyro Pitch", getPitch());
-        SmartDashboard.putNumber("Gyro Roll", getRawGyroAngle(GyroAxis.ROLL));
+        SmartDashboard.putNumber("Gyro Roll", getRoll());
     }
 }
